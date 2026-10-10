@@ -14,7 +14,7 @@ export default function SignUpScreen({ navigation }) {
     if (!school) {
       Alert.alert(
         'Unsupported school email',
-        'Campus Closet is currently only available to Tufts and Northeastern students. Please sign up with your .edu email.'
+        'Reloved is currently only available to Tufts and Northeastern students. Please sign up with your .edu email.'
       );
       return;
     }

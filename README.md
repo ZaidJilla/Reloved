@@ -4,8 +4,7 @@ A campus-only marketplace for students to buy, sell, and resell clothes —
 launching with **Tufts University** and **Northeastern University**.
 
 This is a working starter codebase: React Native (Expo) + Supabase.
-You'll need to run a few setup steps on your own machine (Claude can't
-install npm packages or reach the internet from here), but every file is
+You'll need to run a few setup steps on your own machine, but every file is
 ready to go — this is not a from-scratch tutorial.
 
 ## What's included
