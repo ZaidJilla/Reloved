@@ -268,6 +268,11 @@ security definer
 set search_path = public
 as $$
 begin
+  if nullif(new.raw_user_meta_data ->> 'school_id', '') is null
+     or nullif(new.raw_user_meta_data ->> 'full_name', '') is null then
+    raise exception 'Missing required signup metadata (school_id, full_name)';
+  end if;
+
   insert into public.profiles (id, school_id, full_name)
   values (
     new.id,
