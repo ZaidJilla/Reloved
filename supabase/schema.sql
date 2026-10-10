@@ -40,8 +40,21 @@ create table if not exists listings (
   created_at timestamptz default now()
 );
 
-create index if not exists idx_listings_school on listings(school_id);
-create index if not exists idx_listings_status on listings(status);
+create index if not exists idx_listings_school_status_created
+  on listings(school_id, status, created_at desc);
+create index if not exists idx_listings_category on listings(category);
+create index if not exists idx_listings_size on listings(size);
+create index if not exists idx_listings_condition on listings(condition);
+create index if not exists idx_listings_price on listings(price_cents);
+
+-- Full-text search over title + description, weighted toward title.
+alter table listings add column if not exists search_text tsvector
+  generated always as (
+    setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(description, '')), 'B')
+  ) stored;
+
+create index if not exists idx_listings_search_text on listings using gin(search_text);
 
 -- 4. Listing photos (multiple per listing)
 create table if not exists listing_photos (
@@ -172,6 +185,74 @@ create policy "participants can send messages"
 create policy "users can file reports"
   on reports for insert
   with check (auth.uid() = reporter_id);
+
+-- ============================================================
+-- Search + filter listings
+-- ============================================================
+-- Runs as the caller (security invoker, the default), so the existing RLS
+-- policies still apply. School scoping is enforced here from the caller's
+-- own profile row rather than trusting a client-supplied school_id, since
+-- the "listings are viewable by authenticated users" policy above doesn't
+-- itself restrict rows to the caller's campus.
+create or replace function public.search_listings(
+  p_query text default null,
+  p_category text default null,
+  p_size text default null,
+  p_condition text default null,
+  p_listing_type text default null,
+  p_min_price_cents int default null,
+  p_max_price_cents int default null
+)
+returns table (
+  id uuid,
+  title text,
+  description text,
+  price_cents int,
+  category text,
+  size text,
+  condition text,
+  listing_type text,
+  status text,
+  created_at timestamptz,
+  seller_id uuid,
+  photo_url text
+)
+language sql
+stable
+set search_path = public
+as $$
+  select
+    l.id, l.title, l.description, l.price_cents, l.category, l.size,
+    l.condition, l.listing_type, l.status, l.created_at, l.seller_id,
+    (
+      select lp.photo_url from listing_photos lp
+      where lp.listing_id = l.id
+      order by lp.sort_order
+      limit 1
+    ) as photo_url
+  from listings l
+  cross join lateral (
+    select
+      nullif(btrim(p_query), '') as q_text,
+      websearch_to_tsquery('english', nullif(btrim(p_query), '')) as tsq
+  ) q
+  where l.status = 'active'
+    and l.school_id = (select p.school_id from profiles p where p.id = auth.uid())
+    and (p_category is null or l.category = p_category)
+    and (p_size is null or l.size = p_size)
+    and (p_condition is null or l.condition = p_condition)
+    and (p_listing_type is null or l.listing_type = p_listing_type)
+    and (p_min_price_cents is null or l.price_cents >= p_min_price_cents)
+    and (p_max_price_cents is null or l.price_cents <= p_max_price_cents)
+    and (q.q_text is null or l.search_text @@ q.tsq)
+  order by
+    case when q.q_text is not null
+      then ts_rank(l.search_text, q.tsq)
+    end desc nulls last,
+    l.created_at desc;
+$$;
+
+grant execute on function public.search_listings to authenticated;
 
 -- ============================================================
 -- Auto-create profile row on signup
