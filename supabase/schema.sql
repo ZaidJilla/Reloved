@@ -194,6 +194,10 @@ create policy "users can file reports"
 -- own profile row rather than trusting a client-supplied school_id, since
 -- the "listings are viewable by authenticated users" policy above doesn't
 -- itself restrict rows to the caller's campus.
+-- Drop the pre-pagination signature so the new one replaces it instead of
+-- becoming an ambiguous overload.
+drop function if exists public.search_listings(text, text, text, text, text, int, int);
+
 create or replace function public.search_listings(
   p_query text default null,
   p_category text default null,
@@ -201,7 +205,9 @@ create or replace function public.search_listings(
   p_condition text default null,
   p_listing_type text default null,
   p_min_price_cents int default null,
-  p_max_price_cents int default null
+  p_max_price_cents int default null,
+  p_limit int default 20,
+  p_offset int default 0
 )
 returns table (
   id uuid,
@@ -249,7 +255,9 @@ as $$
     case when q.q_text is not null
       then ts_rank(l.search_text, q.tsq)
     end desc nulls last,
-    l.created_at desc;
+    l.created_at desc
+  limit least(greatest(coalesce(p_limit, 20), 1), 100)
+  offset greatest(coalesce(p_offset, 0), 0);
 $$;
 
 grant execute on function public.search_listings to authenticated;
