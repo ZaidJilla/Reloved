@@ -1,4 +1,4 @@
-# Campus Closet
+# Reloved
 
 A campus-only marketplace for students to buy, sell, and resell clothes —
 launching with **Tufts University** and **Northeastern University**.

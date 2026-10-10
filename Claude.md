@@ -67,13 +67,16 @@ Figma is not the starting point. Wireframes for all 8 core screens are done; nav
 
 ## Commands
 
-<!-- Fill in once package.json / requirements.txt are set up -->
 ```bash
 # Frontend (Expo)
 npx expo start
 
 # Backend (FastAPI)
-uvicorn main:app --reload
+cd backend
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env  # fill in Supabase URL + anon key + service role key
+uvicorn app.main:app --reload
 ```
 
 ## Notes for Claude Code

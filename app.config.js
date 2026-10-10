@@ -4,8 +4,8 @@ require('dotenv').config();
 
 module.exports = {
   expo: {
-    name: 'Campus Closet',
-    slug: 'campus-closet',
+    name: 'Reloved',
+    slug: 'reloved',
     version: '1.0.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
@@ -14,10 +14,10 @@ module.exports = {
     assetBundlePatterns: ['**/*'],
     ios: {
       supportsTablet: false,
-      bundleIdentifier: 'com.campuscloset.app',
+      bundleIdentifier: 'com.reloved.app',
     },
     android: {
-      package: 'com.campuscloset.app',
+      package: 'com.reloved.app',
     },
     extra: {
       supabaseUrl: process.env.SUPABASE_URL,
