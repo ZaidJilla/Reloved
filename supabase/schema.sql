@@ -231,6 +231,11 @@ as $$
       limit 1
     ) as photo_url
   from listings l
+  cross join lateral (
+    select
+      nullif(btrim(p_query), '') as q_text,
+      websearch_to_tsquery('english', nullif(btrim(p_query), '')) as tsq
+  ) q
   where l.status = 'active'
     and l.school_id = (select p.school_id from profiles p where p.id = auth.uid())
     and (p_category is null or l.category = p_category)
@@ -239,10 +244,10 @@ as $$
     and (p_listing_type is null or l.listing_type = p_listing_type)
     and (p_min_price_cents is null or l.price_cents >= p_min_price_cents)
     and (p_max_price_cents is null or l.price_cents <= p_max_price_cents)
-    and (p_query is null or l.search_text @@ websearch_to_tsquery('english', p_query))
+    and (q.q_text is null or l.search_text @@ q.tsq)
   order by
-    case when p_query is not null
-      then ts_rank(l.search_text, websearch_to_tsquery('english', p_query))
+    case when q.q_text is not null
+      then ts_rank(l.search_text, q.tsq)
     end desc nulls last,
     l.created_at desc;
 $$;
