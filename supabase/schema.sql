@@ -194,9 +194,19 @@ create policy "users can file reports"
 -- own profile row rather than trusting a client-supplied school_id, since
 -- the "listings are viewable by authenticated users" policy above doesn't
 -- itself restrict rows to the caller's campus.
--- Drop the pre-pagination signature so the new one replaces it instead of
+-- Drop every existing version so the new signature replaces them instead of
 -- becoming an ambiguous overload.
-drop function if exists public.search_listings(text, text, text, text, text, int, int);
+do $$
+declare r record;
+begin
+  for r in
+    select p.oid::regprocedure as sig
+    from pg_proc p
+    where p.proname = 'search_listings' and p.pronamespace = 'public'::regnamespace
+  loop
+    execute 'drop function ' || r.sig;
+  end loop;
+end $$;
 
 create or replace function public.search_listings(
   p_query text default null,
@@ -260,7 +270,9 @@ as $$
   offset greatest(coalesce(p_offset, 0), 0);
 $$;
 
-grant execute on function public.search_listings to authenticated;
+grant execute on function public.search_listings(
+  text, text, text, text, text, int, int, int, int
+) to authenticated;
 
 -- ============================================================
 -- Auto-create profile row on signup
