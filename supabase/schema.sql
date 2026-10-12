@@ -248,9 +248,13 @@ as $$
     ) as photo_url
   from listings l
   cross join lateral (
-    select
-      nullif(btrim(p_query), '') as q_text,
-      websearch_to_tsquery('english', nullif(btrim(p_query), '')) as tsq
+    -- Split the query into terms and escape LIKE wildcards in each one, so
+    -- typing "50%" or "_" searches for those characters literally.
+    select coalesce(array(
+      select '%' || regexp_replace(t, '([\\%_])', '\\\1', 'g') || '%'
+      from unnest(regexp_split_to_array(lower(btrim(coalesce(p_query, ''))), '\s+')) t
+      where t <> ''
+    ), '{}') as pats
   ) q
   where l.status = 'active'
     and l.school_id = (select p.school_id from profiles p where p.id = auth.uid())
@@ -260,11 +264,15 @@ as $$
     and (p_listing_type is null or l.listing_type = p_listing_type)
     and (p_min_price_cents is null or l.price_cents >= p_min_price_cents)
     and (p_max_price_cents is null or l.price_cents <= p_max_price_cents)
-    and (q.q_text is null or l.search_text @@ q.tsq)
+    -- Every term must appear somewhere in the title or description, so
+    -- partial words ("tes") and middle-of-word matches ("annel") both work.
+    and not exists (
+      select 1 from unnest(q.pats) pat
+      where not (l.title ilike pat or coalesce(l.description, '') ilike pat)
+    )
   order by
-    case when q.q_text is not null
-      then ts_rank(l.search_text, q.tsq)
-    end desc nulls last,
+    -- Listings whose title matches more terms come first.
+    (select count(*) from unnest(q.pats) pat where l.title ilike pat) desc,
     l.created_at desc
   limit least(greatest(coalesce(p_limit, 20), 1), 100)
   offset greatest(coalesce(p_offset, 0), 0);
