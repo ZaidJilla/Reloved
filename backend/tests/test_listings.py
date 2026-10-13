@@ -1,0 +1,124 @@
+import os
+
+os.environ.setdefault("SUPABASE_URL", "http://localhost")
+os.environ.setdefault("SUPABASE_ANON_KEY", "anon")
+os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "service")
+
+from types import SimpleNamespace
+
+import pytest
+from fastapi.testclient import TestClient
+
+from app.core.auth import UserContext, get_user_context
+from app.main import app
+
+LISTING_ROW = {
+    "id": "l1",
+    "title": "Flannel",
+    "description": None,
+    "price_cents": 2000,
+    "category": "Tops",
+    "size": "M",
+    "condition": "Good",
+    "listing_type": "resale",
+    "status": "active",
+    "created_at": "2026-01-01T00:00:00Z",
+    "seller_id": "u1",
+    "listing_photos": [
+        {"photo_url": "b.jpg", "sort_order": 1},
+        {"photo_url": "a.jpg", "sort_order": 0},
+    ],
+    "profiles": {"full_name": "Zaid"},
+}
+
+
+class FakeQuery:
+    """Chainable stand-in for supabase's query builder; records the calls."""
+
+    def __init__(self, table, data, log):
+        self.table, self.data, self.log = table, data, log
+
+    def __getattr__(self, op):
+        def call(*args, **kwargs):
+            self.log.append((self.table, op, args))
+            return self
+
+        return call
+
+    def execute(self):
+        return SimpleNamespace(data=self.data)
+
+
+class FakeClient:
+    def __init__(self, tables):
+        self.tables, self.log = tables, []
+
+    def table(self, name):
+        return FakeQuery(name, self.tables.get(name, []), self.log)
+
+
+@pytest.fixture
+def http():
+    yield TestClient(app)
+    app.dependency_overrides.clear()
+
+
+def _as_user(tables):
+    fake = FakeClient(tables)
+    app.dependency_overrides[get_user_context] = lambda: UserContext(fake, "u1")
+    return fake
+
+
+def test_get_listing_returns_sorted_photos_and_seller(http):
+    _as_user({"profiles": [{"school_id": "northeastern"}], "listings": [LISTING_ROW]})
+    body = http.get("/listings/l1").json()
+    assert body["seller_name"] == "Zaid"
+    assert [p["photo_url"] for p in body["photos"]] == ["a.jpg", "b.jpg"]
+
+
+def test_get_listing_scopes_to_callers_school(http):
+    fake = _as_user({"profiles": [{"school_id": "tufts"}], "listings": []})
+    assert http.get("/listings/l1").status_code == 404
+    assert ("listings", "eq", ("school_id", "tufts")) in fake.log
+
+
+def test_create_uses_caller_identity_and_converts_price(http):
+    fake = _as_user(
+        {"profiles": [{"school_id": "northeastern"}], "listings": [LISTING_ROW]}
+    )
+    r = http.post(
+        "/listings",
+        json={
+            "title": " Flannel ",
+            "price": 20.5,
+            "seller_id": "someone-else",
+            "photo_urls": ["a.jpg"],
+        },
+    )
+    assert r.status_code == 201
+    inserts = [c for c in fake.log if c[1] == "insert"]
+    row = inserts[0][2][0]
+    assert row["seller_id"] == "u1"  # not the spoofed one
+    assert row["school_id"] == "northeastern"
+    assert row["price_cents"] == 2050
+    assert row["title"] == "Flannel"
+    assert inserts[1][0] == "listing_photos"
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"title": "", "price": 5},
+        {"title": "x", "price": -1},
+        {"title": "x", "price": 5, "listing_type": "rent"},
+        {"title": "x", "price": 5, "photo_urls": ["u"] * 7},
+    ],
+)
+def test_create_validation(http, body):
+    _as_user({"profiles": [{"school_id": "northeastern"}]})
+    assert http.post("/listings", json=body).status_code == 422
+
+
+def test_requires_auth(http):
+    assert http.get("/listings/l1").status_code == 401
+    assert http.post("/listings", json={"title": "x", "price": 1}).status_code == 401
