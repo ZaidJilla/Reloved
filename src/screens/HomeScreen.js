@@ -3,13 +3,14 @@ import {
   View,
   Text,
   FlatList,
-  Image,
-  TouchableOpacity,
   StyleSheet,
   TextInput,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../lib/api';
+import { colors, space, type } from '../theme';
+import { Headline, ItemCard } from '../components';
 
 export default function HomeScreen({ navigation }) {
   const [listings, setListings] = useState([]);
@@ -39,36 +40,25 @@ export default function HomeScreen({ navigation }) {
     setRefreshing(false);
   }
 
+  // FlatList calls renderItem once per row of `listings`. numColumns={2} lays
+  // the cards out in a two-column grid; each card just fills its column.
   function renderItem({ item }) {
-    const photo = item.photo_url;
     return (
-      <TouchableOpacity
-        style={styles.card}
-        onPress={() => navigation.navigate('ListingDetail', { listingId: item.id })}
-      >
-        {photo ? (
-          <Image source={{ uri: photo }} style={styles.image} />
-        ) : (
-          <View style={[styles.image, styles.imagePlaceholder]} />
-        )}
-        <Text numberOfLines={1} style={styles.cardTitle}>{item.title}</Text>
-        <Text style={styles.cardPrice}>${(item.price_cents / 100).toFixed(2)}</Text>
-        {item.listing_type === 'handmade' && (
-          <Text style={styles.handmadeBadge}>Handmade</Text>
-        )}
-      </TouchableOpacity>
+      <View style={styles.cell}>
+        <ItemCard
+          title={item.title}
+          priceCents={item.price_cents}
+          category={item.category}
+          imageUri={item.photo_url}
+          sold={item.status === 'sold'}
+          onPress={() => navigation.navigate('ListingDetail', { listingId: item.id })}
+        />
+      </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <TextInput
-        style={styles.search}
-        placeholder="Search listings..."
-        value={search}
-        onChangeText={setSearch}
-        onSubmitEditing={loadListings}
-      />
+    <SafeAreaView style={styles.container}>
       <FlatList
         data={listings}
         keyExtractor={(item) => item.id}
@@ -76,39 +66,43 @@ export default function HomeScreen({ navigation }) {
         numColumns={2}
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <Headline plain="Pre-loved," italic="right on campus" />
+            <TextInput
+              style={styles.search}
+              placeholder="Search your campus"
+              placeholderTextColor={colors.muted}
+              value={search}
+              onChangeText={setSearch}
+              onSubmitEditing={loadListings}
+              returnKeyType="search"
+            />
+          </View>
+        }
         ListEmptyComponent={
-          <Text style={styles.empty}>No listings yet on your campus. Be the first to sell something!</Text>
+          <Text style={styles.empty}>Nothing here yet. List your first piece.</Text>
         }
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', paddingTop: 12 },
+  container: { flex: 1, backgroundColor: colors.cream },
+  header: { paddingTop: space.lg, paddingBottom: space.lg, gap: space.xxl },
   search: {
-    marginHorizontal: 16,
-    marginBottom: 12,
+    ...type.body,
+    color: colors.ink,
+    height: 48,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    padding: 12,
+    borderColor: colors.line,
+    backgroundColor: colors.white,
+    paddingHorizontal: space.xl,
   },
-  list: { paddingHorizontal: 8, paddingBottom: 24 },
-  card: { flex: 1, margin: 8, maxWidth: '46%' },
-  image: { width: '100%', aspectRatio: 1, borderRadius: 10, backgroundColor: '#eee' },
-  imagePlaceholder: { justifyContent: 'center', alignItems: 'center' },
-  cardTitle: { marginTop: 6, fontSize: 14, fontWeight: '600' },
-  cardPrice: { fontSize: 13, color: '#444' },
-  handmadeBadge: {
-    marginTop: 2,
-    fontSize: 11,
-    color: '#fff',
-    backgroundColor: '#2f9e44',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  empty: { textAlign: 'center', marginTop: 60, color: '#888', paddingHorizontal: 40 },
+  // Bottom padding keeps the last row clear of the floating nav bar.
+  list: { paddingHorizontal: space.xl - space.sm / 2, paddingBottom: 112 },
+  cell: { flex: 1 / 2, padding: space.sm / 2 },
+  empty: { ...type.body, textAlign: 'center', marginTop: 60, color: colors.inkSoft, paddingHorizontal: 40 },
 });

@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { colors, radius, space, type } from '../theme';
 
 export default function ChatScreen({ route }) {
   const { conversationId, listingTitle } = route.params;
@@ -96,7 +97,8 @@ export default function ChatScreen({ route }) {
       <View style={styles.inputRow}>
         <TextInput
           style={styles.input}
-          placeholder="Message..."
+          placeholder="Message"
+          placeholderTextColor={colors.muted}
           value={text}
           onChangeText={setText}
         />
@@ -109,38 +111,42 @@ export default function ChatScreen({ route }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: colors.cream },
   header: {
-    padding: 12,
-    fontWeight: '600',
+    ...type.bodyMedium,
+    color: colors.ink,
+    padding: space.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: colors.line,
   },
-  bubble: { maxWidth: '75%', padding: 10, borderRadius: 14, marginBottom: 8 },
-  bubbleMine: { backgroundColor: '#111', alignSelf: 'flex-end' },
-  bubbleTheirs: { backgroundColor: '#f0f0f0', alignSelf: 'flex-start' },
-  bubbleTextMine: { color: '#fff' },
-  bubbleTextTheirs: { color: '#111' },
+  bubble: { maxWidth: '75%', paddingVertical: 10, paddingHorizontal: 14, borderRadius: radius.inner, marginBottom: space.sm },
+  bubbleMine: { backgroundColor: colors.ink, alignSelf: 'flex-end' },
+  bubbleTheirs: { backgroundColor: colors.sand, alignSelf: 'flex-start' },
+  bubbleTextMine: { ...type.body, color: colors.white },
+  bubbleTextTheirs: { ...type.body, color: colors.ink },
   inputRow: {
     flexDirection: 'row',
     padding: 10,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: colors.line,
   },
   input: {
+    ...type.body,
     flex: 1,
+    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 20,
-    paddingHorizontal: 16,
+    borderColor: colors.line,
+    borderRadius: radius.pill,
+    paddingHorizontal: space.lg,
     paddingVertical: 10,
-    marginRight: 8,
+    marginRight: space.sm,
+    color: colors.ink,
   },
   sendButton: {
-    backgroundColor: '#111',
-    borderRadius: 20,
-    paddingHorizontal: 18,
+    backgroundColor: colors.ink,
+    borderRadius: radius.pill,
+    paddingHorizontal: space.xl,
     justifyContent: 'center',
   },
-  sendButtonText: { color: '#fff', fontWeight: '600' },
+  sendButtonText: { ...type.bodyMedium, color: colors.white },
 });

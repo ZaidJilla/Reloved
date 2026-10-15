@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { categoryFor, colors, radius, space, type } from '../theme';
+import { Headline, Button } from '../components';
 
 export default function ListingDetailScreen({ route, navigation }) {
   const { listingId } = route.params;
@@ -74,45 +76,52 @@ export default function ListingDetailScreen({ route, navigation }) {
   }
 
   if (!listing) {
-    return <View style={styles.container}><Text>Loading...</Text></View>;
+    return <View style={styles.container} />;
   }
 
   const isOwner = currentUserId === listing.seller_id;
+  const cat = categoryFor(listing.category);
+  // Title is plain words plus an italic last word, per the style guide.
+  const words = listing.title.trim().split(/\s+/);
+  const italicWord = words.length > 1 ? words.pop() : null;
+  const plainTitle = words.join(' ');
 
   return (
-    <ScrollView style={styles.container}>
-      {listing.listing_photos?.length ? (
-        listing.listing_photos.map((p, i) => (
-          <Image key={i} source={{ uri: p.photo_url }} style={styles.image} />
-        ))
-      ) : (
-        <View style={[styles.image, styles.imagePlaceholder]} />
-      )}
+    // Listing is the one full-color screen: it uses the item's category color.
+    <ScrollView
+      style={[styles.container, { backgroundColor: cat.color }]}
+      contentContainerStyle={styles.content}
+    >
+      <View style={[styles.photoFrame, { backgroundColor: cat.tint }]}>
+        {listing.listing_photos?.length ? (
+          <Image source={{ uri: listing.listing_photos[0].photo_url }} style={styles.image} />
+        ) : null}
+      </View>
 
       <View style={styles.body}>
-        <Text style={styles.title}>{listing.title}</Text>
-        <Text style={styles.price}>${(listing.price_cents / 100).toFixed(2)}</Text>
+        {plainTitle ? (
+          <Headline size="title" plain={plainTitle} italic={italicWord} />
+        ) : (
+          <Headline size="title" plain={italicWord} />
+        )}
+        <Text style={[type.priceL, styles.price]}>${(listing.price_cents / 100).toFixed(2)}</Text>
         {listing.listing_type === 'handmade' && (
-          <Text style={styles.handmadeBadge}>Handmade by seller</Text>
+          <View style={styles.badge}>
+            <Text style={[type.caption, { color: colors.white }]}>Handmade by seller</Text>
+          </View>
         )}
         <Text style={styles.seller}>Sold by {listing.profiles?.full_name}</Text>
         <Text style={styles.description}>{listing.description}</Text>
         <Text style={styles.meta}>
-          {listing.category ? `${listing.category} · ` : ''}
-          {listing.size ? `Size ${listing.size} · ` : ''}
-          {listing.condition || ''}
+          {[listing.category, listing.size && `Size ${listing.size}`, listing.condition]
+            .filter(Boolean)
+            .join(' · ')}
         </Text>
 
         {isOwner ? (
-          listing.status === 'active' && (
-            <TouchableOpacity style={styles.button} onPress={markSold}>
-              <Text style={styles.buttonText}>Mark as Sold</Text>
-            </TouchableOpacity>
-          )
+          listing.status === 'active' && <Button label="Mark as sold" onPress={markSold} style={styles.cta} />
         ) : (
-          <TouchableOpacity style={styles.button} onPress={messageSeller}>
-            <Text style={styles.buttonText}>Message Seller</Text>
-          </TouchableOpacity>
+          <Button label="Message" onPress={messageSeller} style={styles.cta} />
         )}
       </View>
     </ScrollView>
@@ -120,31 +129,27 @@ export default function ListingDetailScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  image: { width: '100%', height: 320, backgroundColor: '#eee' },
-  imagePlaceholder: { justifyContent: 'center', alignItems: 'center' },
-  body: { padding: 20 },
-  title: { fontSize: 22, fontWeight: '700' },
-  price: { fontSize: 18, color: '#111', marginTop: 4 },
-  handmadeBadge: {
-    marginTop: 8,
-    fontSize: 12,
-    color: '#fff',
-    backgroundColor: '#2f9e44',
+  container: { flex: 1, backgroundColor: colors.cream },
+  content: { paddingBottom: space.xxxl },
+  photoFrame: {
+    height: 340,
+    marginHorizontal: space.xl,
+    borderRadius: radius.hero,
+    overflow: 'hidden',
+  },
+  image: { width: '100%', height: '100%' },
+  body: { padding: space.xl },
+  price: { color: colors.ink, marginTop: space.sm },
+  badge: {
+    marginTop: space.md,
+    backgroundColor: colors.ink,
     alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
   },
-  seller: { marginTop: 12, fontSize: 14, color: '#555' },
-  description: { marginTop: 12, fontSize: 15, lineHeight: 21 },
-  meta: { marginTop: 12, fontSize: 13, color: '#888' },
-  button: {
-    backgroundColor: '#111',
-    borderRadius: 10,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  seller: { ...type.bodyMedium, color: colors.ink, marginTop: space.lg },
+  description: { ...type.body, color: colors.ink, marginTop: space.md },
+  meta: { ...type.caption, color: colors.ink, marginTop: space.md },
+  cta: { marginTop: space.xxl },
 });

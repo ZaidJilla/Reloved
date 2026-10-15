@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -10,7 +9,10 @@ import {
   Alert,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
+import { colors, radius, space, type } from '../theme';
+import { Headline, Button, Pill, FormInput } from '../components';
 
 export default function CreateListingScreen({ navigation }) {
   const [title, setTitle] = useState('');
@@ -116,112 +118,60 @@ export default function CreateListingScreen({ navigation }) {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: 20 }}>
-      <Text style={styles.title}>Sell an item</Text>
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <Headline plain="Sell it" italic="in 30 seconds" style={styles.headline} />
 
-      <TouchableOpacity style={styles.photoPicker} onPress={pickImage}>
-        {photoUri ? (
-          <Image source={{ uri: photoUri }} style={styles.photoPreview} />
-        ) : (
-          <Text style={styles.photoPickerText}>+ Add Photo</Text>
-        )}
-      </TouchableOpacity>
-
-      <View style={styles.toggleRow}>
-        <TouchableOpacity
-          style={[styles.toggleButton, listingType === 'resale' && styles.toggleButtonActive]}
-          onPress={() => setListingType('resale')}
-        >
-          <Text style={listingType === 'resale' ? styles.toggleTextActive : styles.toggleText}>
-            Resale
-          </Text>
+        <TouchableOpacity style={styles.photoPicker} onPress={pickImage}>
+          {photoUri ? (
+            <Image source={{ uri: photoUri }} style={styles.photoPreview} />
+          ) : (
+            <Text style={styles.photoPickerText}>Add photo</Text>
+          )}
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.toggleButton, listingType === 'handmade' && styles.toggleButtonActive]}
-          onPress={() => setListingType('handmade')}
-        >
-          <Text style={listingType === 'handmade' ? styles.toggleTextActive : styles.toggleText}>
-            Handmade by me
-          </Text>
-        </TouchableOpacity>
-      </View>
 
-      <TextInput style={styles.input} placeholder="Title" value={title} onChangeText={setTitle} />
-      <TextInput
-        style={[styles.input, styles.multiline]}
-        placeholder="Description"
-        value={description}
-        onChangeText={setDescription}
-        multiline
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Price (e.g. 25.00)"
-        keyboardType="decimal-pad"
-        value={price}
-        onChangeText={setPrice}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Category (e.g. Jackets, Tops)"
-        value={category}
-        onChangeText={setCategory}
-      />
-      <TextInput style={styles.input} placeholder="Size" value={size} onChangeText={setSize} />
-      <TextInput
-        style={styles.input}
-        placeholder="Condition (e.g. Like new, Good, Worn)"
-        value={condition}
-        onChangeText={setCondition}
-      />
+        <View style={styles.pillRow}>
+          <Pill label="Resale" selected={listingType === 'resale'} onPress={() => setListingType('resale')} />
+          <Pill label="Handmade by me" selected={listingType === 'handmade'} onPress={() => setListingType('handmade')} />
+        </View>
 
-      <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={submitting}>
-        <Text style={styles.buttonText}>{submitting ? 'Posting...' : 'Post Listing'}</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <FormInput placeholder="Title" value={title} onChangeText={setTitle} />
+        <FormInput placeholder="Description" value={description} onChangeText={setDescription} multiline />
+        <FormInput placeholder="Price (e.g. 25.00)" keyboardType="decimal-pad" value={price} onChangeText={setPrice} />
+        <FormInput placeholder="Category (e.g. Jackets, Tops)" value={category} onChangeText={setCategory} />
+        <FormInput placeholder="Size" value={size} onChangeText={setSize} />
+        <FormInput placeholder="Condition (e.g. Like new, Good, Worn)" value={condition} onChangeText={setCondition} />
+
+        <Button
+          label={submitting ? 'Posting...' : 'Post listing'}
+          onPress={handleSubmit}
+          disabled={submitting}
+          style={styles.cta}
+        />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  title: { fontSize: 24, fontWeight: '700', marginBottom: 16 },
+  container: { flex: 1, backgroundColor: colors.cream },
+  // Bottom padding keeps the post button clear of the floating nav bar.
+  content: { padding: space.xl, paddingBottom: 112 },
+  headline: { marginBottom: space.xxl },
   photoPicker: {
     height: 180,
-    borderRadius: 12,
-    backgroundColor: '#f2f2f2',
+    borderRadius: radius.row,
+    backgroundColor: colors.sand,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.muted,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: space.lg,
     overflow: 'hidden',
   },
   photoPreview: { width: '100%', height: '100%' },
-  photoPickerText: { color: '#888', fontSize: 16 },
-  toggleRow: { flexDirection: 'row', marginBottom: 16 },
-  toggleButton: {
-    flex: 1,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    alignItems: 'center',
-  },
-  toggleButtonActive: { backgroundColor: '#111', borderColor: '#111' },
-  toggleText: { color: '#111' },
-  toggleTextActive: { color: '#fff', fontWeight: '600' },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 12,
-    fontSize: 16,
-  },
-  multiline: { height: 90, textAlignVertical: 'top' },
-  button: {
-    backgroundColor: '#111',
-    borderRadius: 10,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  photoPickerText: { ...type.body, color: colors.inkSoft },
+  pillRow: { flexDirection: 'row', gap: space.sm, marginBottom: space.lg },
+  cta: { marginTop: space.sm },
 });
