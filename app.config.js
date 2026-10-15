@@ -8,7 +8,6 @@ module.exports = {
     slug: 'reloved',
     version: '1.0.0',
     orientation: 'portrait',
-    icon: './assets/icon.png',
     userInterfaceStyle: 'light',
     splash: { backgroundColor: '#ffffff' },
     assetBundlePatterns: ['**/*'],
@@ -22,6 +21,7 @@ module.exports = {
     extra: {
       supabaseUrl: process.env.SUPABASE_URL,
       supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
+      apiUrl: process.env.API_URL,
     },
   },
 };

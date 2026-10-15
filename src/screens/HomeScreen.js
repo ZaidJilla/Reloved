@@ -9,40 +9,24 @@ import {
   TextInput,
   RefreshControl,
 } from 'react-native';
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 
 export default function HomeScreen({ navigation }) {
   const [listings, setListings] = useState([]);
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const [mySchoolId, setMySchoolId] = useState(null);
 
+  // useCallback keeps the same function between renders unless `search` changes,
+  // so the useEffect below only re-runs when the search text actually changes.
   const loadListings = useCallback(async () => {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData?.user) return;
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('school_id')
-      .eq('id', userData.user.id)
-      .single();
-
-    if (!profile) return;
-    setMySchoolId(profile.school_id);
-
-    let query = supabase
-      .from('listings')
-      .select('id, title, price_cents, listing_type, status, listing_photos(photo_url)')
-      .eq('school_id', profile.school_id)
-      .eq('status', 'active')
-      .order('created_at', { ascending: false });
-
-    if (search.trim()) {
-      query = query.ilike('title', `%${search.trim()}%`);
+    try {
+      const { data } = await api.get('/search/listings', {
+        params: { q: search.trim() || undefined },
+      });
+      setListings(data.results);
+    } catch (e) {
+      console.warn('Search failed:', e.response?.data?.detail || e.message);
     }
-
-    const { data, error } = await query;
-    if (!error) setListings(data || []);
   }, [search]);
 
   useEffect(() => {
@@ -56,7 +40,7 @@ export default function HomeScreen({ navigation }) {
   }
 
   function renderItem({ item }) {
-    const photo = item.listing_photos?.[0]?.photo_url;
+    const photo = item.photo_url;
     return (
       <TouchableOpacity
         style={styles.card}
