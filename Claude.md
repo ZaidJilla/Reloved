@@ -61,7 +61,7 @@ Auth gates everything, so it lands first. Feed + post-listing are the core loop.
 
 ## Build sequence (don't skip steps)
 
-validate demand → recruit seed sellers → paper sketches → low-fi Figma → define design language → high-fi Figma → code
+validate demand → recruit seed sellers open -e .env→ paper sketches → low-fi Figma → define design language → high-fi Figma → code
 
 Figma is not the starting point. Wireframes for all 8 core screens are done; navigation architecture (bottom tabs + stack navigators, Supabase auth gate) is mapped.
 
