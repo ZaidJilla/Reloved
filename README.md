@@ -4,8 +4,7 @@ A campus-only marketplace for students to buy, sell, and resell clothes —
 launching with **Tufts University** and **Northeastern University**.
 
 This is a working starter codebase: React Native (Expo) + Supabase.
-You'll need to run a few setup steps on your own machine (Claude can't
-install npm packages or reach the internet from here), but every file is
+You'll need to run a few setup steps on your own machine, but every file is
 ready to go — this is not a from-scratch tutorial.
 
 ## What's included
@@ -90,6 +89,30 @@ src/
 supabase/
   schema.sql                   full DB schema + RLS policies
 ```
+
+## Search API
+
+`GET /search/listings` — searches active listings at the caller's school (the
+school is taken from their profile server-side, never from the request).
+
+Send the Supabase session token: `Authorization: Bearer <access_token>`.
+
+| Query param | Notes |
+|---|---|
+| `q` | Keywords, matched against title + description (max 100 chars) |
+| `category`, `size`, `condition` | Exact match |
+| `listing_type` | `resale` or `handmade` |
+| `min_price`, `max_price` | Dollars (e.g. `12.50`); min must be <= max |
+| `limit`, `offset` | Pagination. `limit` 1-100 (default 20) |
+
+Response: `{ results: [...], limit, offset, has_more }`. Each result has `id`,
+`title`, `description`, `price_cents`, `category`, `size`, `condition`,
+`listing_type`, `status`, `created_at`, `seller_id`, `photo_url`.
+For infinite scroll in a `FlatList`, call again with `offset += limit` while
+`has_more` is true. Re-run `supabase/schema.sql`'s `search_listings` section
+in the Supabase SQL editor to pick up the pagination params.
+
+Backend tests: `cd backend && pip install -r requirements-dev.txt && pytest`.
 
 ## Next steps (see the ticket backlog doc for the full list)
 

@@ -29,6 +29,7 @@ def signup(payload: SignUpRequest) -> SignUpResponse:
                 # TODO: If you want email confirmation, wire up admin.generate_link + a mailer.
                 # Until then, confirm immediately so newly created users can log in.
                 "email_confirm": True,
+            }
         )
     except Exception as exc:
         raise HTTPException(status_code=400, detail="Unable to create account.") from exc

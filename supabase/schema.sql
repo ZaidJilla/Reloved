@@ -40,8 +40,21 @@ create table if not exists listings (
   created_at timestamptz default now()
 );
 
-create index if not exists idx_listings_school on listings(school_id);
-create index if not exists idx_listings_status on listings(status);
+create index if not exists idx_listings_school_status_created
+  on listings(school_id, status, created_at desc);
+create index if not exists idx_listings_category on listings(category);
+create index if not exists idx_listings_size on listings(size);
+create index if not exists idx_listings_condition on listings(condition);
+create index if not exists idx_listings_price on listings(price_cents);
+
+-- Full-text search over title + description, weighted toward title.
+alter table listings add column if not exists search_text tsvector
+  generated always as (
+    setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(description, '')), 'B')
+  ) stored;
+
+create index if not exists idx_listings_search_text on listings using gin(search_text);
 
 -- 4. Listing photos (multiple per listing)
 create table if not exists listing_photos (
@@ -172,6 +185,8 @@ create policy "participants can send messages"
 create policy "users can file reports"
   on reports for insert
   with check (auth.uid() = reporter_id);
+
+-- Search lives in supabase/migrations/001_search_listings.sql
 
 -- ============================================================
 -- Auto-create profile row on signup
