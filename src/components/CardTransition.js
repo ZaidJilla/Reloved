@@ -94,13 +94,16 @@ export function CardTransitionProvider({ children }) {
   // Card -> full screen. Resolves once the overlay has landed.
   const expand = useCallback(
     async (id, overlayColor) => {
+      // One overlay is shared by every transition, so only one can run at a time.
+      if (phase.current !== 'idle') return 'busy';
       const rect = await measureCard(id);
-      if (!rect) return;
+      if (!rect) return 'skipped';
       phase.current = 'expanding';
       setFrame(rect, radius.card);
       setColor(overlayColor);
       await animateFrame(fullScreen, radius.hero);
       phase.current = 'holding';
+      return 'done';
     },
     [measureCard, setFrame, animateFrame, fullScreen]
   );
@@ -138,9 +141,12 @@ export function CardTransitionProvider({ children }) {
     [fullScreen, setFrame, measureCard, animateFrame, opacity]
   );
 
+  // True while any transition is running (grow, hold, or shrink).
+  const isBusy = useCallback(() => phase.current !== 'idle', []);
+
   const value = useMemo(
-    () => ({ cardRefs, expand, collapse, release, reduceMotion }),
-    [expand, collapse, release, reduceMotion]
+    () => ({ cardRefs, expand, collapse, release, isBusy, reduceMotion }),
+    [expand, collapse, release, isBusy, reduceMotion]
   );
 
   return (

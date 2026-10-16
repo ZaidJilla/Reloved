@@ -7,7 +7,7 @@ import { categoryFor } from '../theme';
 // `scope` namespaces the card refs, since the same listing can be on screen in
 // two tabs at once and the reverse animation has to land on the right card.
 export default function useOpenListing(navigation, scope) {
-  const { cardRefs, expand, release, reduceMotion } = useCardTransition();
+  const { cardRefs, expand, release, isBusy, reduceMotion } = useCardTransition();
   const opening = useRef(false);
 
   const cardKey = (item) => `${scope}:${item.id}`;
@@ -21,7 +21,10 @@ export default function useOpenListing(navigation, scope) {
   // listing underneath it, then the listing lifts the block and fades in.
   // With "reduce motion" on we skip the grow and go straight to the listing.
   async function openListing(item) {
-    if (opening.current) return;
+    // Ignore taps while another card is still growing or shrinking home. The
+    // shared overlay can only run one transition at a time, and starting a new
+    // grow mid-shrink makes it jump.
+    if (opening.current || isBusy()) return;
     opening.current = true;
     // `preview` is the search result we already have, so the listing screen can
     // show content instantly instead of waiting on the network.
