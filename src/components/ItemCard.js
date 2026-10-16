@@ -4,11 +4,13 @@ import { categoryFor, colors, motion, radius, space, type } from '../theme';
 
 // Card takes its color from the item's category. Photo sits in a radius-16 frame
 // with a white wash behind it while the image loads.
-export default function ItemCard({ title, priceCents, category, imageUri, sold, onPress, style }) {
+export default function ItemCard({ title, priceCents, category, imageUri, sold, onPress, style, innerRef }) {
   const cat = categoryFor(category);
   const price = Math.round(priceCents / 100);
   return (
     <Pressable
+      ref={innerRef}
+      collapsable={false}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${title}, $${price}${sold ? ', sold' : ''}`}

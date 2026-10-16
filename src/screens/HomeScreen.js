@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../lib/api';
+import useOpenListing from '../hooks/useOpenListing';
 import { colors, space, type } from '../theme';
 import { Headline, ItemCard } from '../components';
 
@@ -16,6 +17,7 @@ export default function HomeScreen({ navigation }) {
   const [listings, setListings] = useState([]);
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const { openListing, registerCard } = useOpenListing(navigation, 'home');
 
   // useCallback keeps the same function between renders unless `search` changes,
   // so the useEffect below only re-runs when the search text actually changes.
@@ -51,7 +53,8 @@ export default function HomeScreen({ navigation }) {
           category={item.category}
           imageUri={item.photo_url}
           sold={item.status === 'sold'}
-          onPress={() => navigation.navigate('ListingDetail', { listingId: item.id })}
+          innerRef={registerCard(item)}
+          onPress={() => openListing(item)}
         />
       </View>
     );

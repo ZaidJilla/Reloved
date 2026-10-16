@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts, Fraunces_400Regular, Fraunces_400Regular_Italic } from '@expo-google-fonts/fraunces';
 import { DMSans_400Regular, DMSans_500Medium } from '@expo-google-fonts/dm-sans';
 import { colors, navTheme } from './src/theme';
+import { CardTransitionProvider } from './src/components';
 import { supabase } from './src/lib/supabase';
 import AuthNavigator from './src/navigation/AuthNavigator';
 import MainTabNavigator from './src/navigation/MainTabNavigator';
@@ -44,7 +45,9 @@ export default function App() {
   return (
     <NavigationContainer theme={navTheme}>
       <StatusBar style="auto" />
-      {session ? <MainTabNavigator /> : <AuthNavigator />}
+      <CardTransitionProvider>
+        {session ? <MainTabNavigator /> : <AuthNavigator />}
+      </CardTransitionProvider>
     </NavigationContainer>
   );
 }

@@ -3,6 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 
 import HomeScreen from '../screens/HomeScreen';
 import ListingDetailScreen from '../screens/ListingDetailScreen';
@@ -10,17 +11,30 @@ import CreateListingScreen from '../screens/CreateListingScreen';
 import MessagesScreen from '../screens/MessagesScreen';
 import ChatScreen from '../screens/ChatScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-import { colors, space, stackHeaderOptions } from '../theme';
+import { categoryFor, colors, space, stackHeaderOptions } from '../theme';
 
 const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
 const MessagesStack = createNativeStackNavigator();
 
+function listingDetailOptions({ route }) {
+  const { color } = categoryFor(route.params?.category);
+  return {
+    title: '',
+    // The card-expand overlay handles the motion, so no native push/pop
+    // animation or swipe-back (which would skip the reverse transition).
+    animation: 'none',
+    gestureEnabled: false,
+    headerStyle: { backgroundColor: color },
+    contentStyle: { backgroundColor: color },
+  };
+}
+
 function HomeStackScreen() {
   return (
     <HomeStack.Navigator screenOptions={stackHeaderOptions}>
       <HomeStack.Screen name="Browse" component={HomeScreen} options={{ headerShown: false }} />
-      <HomeStack.Screen name="ListingDetail" component={ListingDetailScreen} options={{ title: '' }} />
+      <HomeStack.Screen name="ListingDetail" component={ListingDetailScreen} options={listingDetailOptions} />
     </HomeStack.Navigator>
   );
 }
@@ -33,6 +47,12 @@ function MessagesStackScreen() {
     </MessagesStack.Navigator>
   );
 }
+
+// Listing uses its own bar, so hide the floating nav while it's showing.
+const hideBarOnListing = (title) => ({ route }) => ({
+  title,
+  tabBarStyle: getFocusedRouteNameFromRoute(route) === 'ListingDetail' ? { display: 'none' } : styles.bar,
+});
 
 const ICONS = {
   HomeTab: ['home', 'home-outline'],
@@ -63,7 +83,7 @@ export default function MainTabNavigator() {
           ),
       })}
     >
-      <Tab.Screen name="HomeTab" component={HomeStackScreen} options={{ title: 'Browse' }} />
+      <Tab.Screen name="HomeTab" component={HomeStackScreen} options={hideBarOnListing('Browse')} />
       <Tab.Screen name="MessagesTab" component={MessagesStackScreen} options={{ title: 'Messages' }} />
       <Tab.Screen name="SellTab" component={CreateListingScreen} options={{ title: 'Sell' }} />
       <Tab.Screen name="ProfileTab" component={ProfileScreen} options={{ title: 'Profile' }} />
