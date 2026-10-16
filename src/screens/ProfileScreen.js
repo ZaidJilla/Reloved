@@ -3,6 +3,9 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { SCHOOLS } from '../constants/schools';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors, space, type } from '../theme';
+import { Headline } from '../components';
 
 export default function ProfileScreen() {
   const [profile, setProfile] = useState(null);
@@ -41,13 +44,13 @@ export default function ProfileScreen() {
   const schoolName = SCHOOLS.find((s) => s.id === profile?.school_id)?.name;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.name}>{profile?.full_name}</Text>
+        <Headline size="title" plain={profile?.full_name || ''} />
         <Text style={styles.school}>{schoolName}</Text>
       </View>
 
-      <Text style={styles.sectionTitle}>Your Listings</Text>
+      <Text style={styles.sectionTitle}>Your listings</Text>
       <FlatList
         data={myListings}
         keyExtractor={(item) => item.id}
@@ -63,22 +66,21 @@ export default function ProfileScreen() {
       />
 
       <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-        <Text style={styles.signOutText}>Sign Out</Text>
+        <Text style={styles.signOutText}>Sign out</Text>
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', padding: 20 },
-  header: { marginBottom: 20, paddingTop: 20 },
-  name: { fontSize: 24, fontWeight: '700' },
-  school: { fontSize: 14, color: '#666', marginTop: 4 },
-  sectionTitle: { fontSize: 16, fontWeight: '600', marginBottom: 8 },
-  row: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  rowTitle: { fontSize: 15, fontWeight: '500' },
-  rowMeta: { fontSize: 13, color: '#888', marginTop: 2 },
-  empty: { color: '#888', marginTop: 8 },
-  signOutButton: { marginTop: 'auto', padding: 16, alignItems: 'center' },
-  signOutText: { color: '#c92a2a', fontWeight: '600' },
+  container: { flex: 1, backgroundColor: colors.cream, padding: space.xl, paddingBottom: 112 },
+  header: { marginBottom: space.xxl, paddingTop: space.lg },
+  school: { ...type.body, color: colors.inkSoft, marginTop: space.sm },
+  sectionTitle: { ...type.section, color: colors.ink, marginBottom: space.sm },
+  row: { paddingVertical: space.md, borderBottomWidth: 1, borderBottomColor: colors.line },
+  rowTitle: { ...type.bodyMedium, color: colors.ink },
+  rowMeta: { ...type.caption, color: colors.inkSoft, marginTop: 2 },
+  empty: { ...type.body, color: colors.inkSoft, marginTop: space.sm },
+  signOutButton: { marginTop: 'auto', padding: space.lg, alignItems: 'center' },
+  signOutText: { ...type.bodyMedium, color: colors.danger },
 });

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { supabase } from '../../lib/supabase';
+import { colors, space, type } from '../../theme';
+import { Headline, Button, FormInput } from '../../components';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -19,28 +21,24 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Reloved</Text>
+      <Headline plain="Welcome" italic="back" />
       <Text style={styles.subtitle}>Buy, sell, and make clothes with your campus.</Text>
 
-      <TextInput
-        style={styles.input}
+      <FormInput
         placeholder="School email"
         autoCapitalize="none"
         keyboardType="email-address"
         value={email}
         onChangeText={setEmail}
       />
-      <TextInput
-        style={styles.input}
+      <FormInput
         placeholder="Password"
         secureTextEntry
         value={password}
         onChangeText={setPassword}
       />
 
-      <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-        <Text style={styles.buttonText}>{loading ? 'Logging in...' : 'Log In'}</Text>
-      </TouchableOpacity>
+      <Button style={styles.button} label={loading ? 'Logging in...' : 'Log in'} onPress={handleLogin} disabled={loading} />
 
       <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
         <Text style={styles.link}>New here? Create an account</Text>
@@ -50,24 +48,8 @@ export default function LoginScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: '#fff' },
-  title: { fontSize: 30, fontWeight: '700', marginBottom: 8 },
-  subtitle: { fontSize: 14, color: '#666', marginBottom: 24 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 12,
-    fontSize: 16,
-  },
-  button: {
-    backgroundColor: '#111',
-    borderRadius: 10,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  link: { textAlign: 'center', marginTop: 20, color: '#111' },
+  container: { flex: 1, justifyContent: 'center', padding: space.xl, backgroundColor: colors.cream },
+  subtitle: { ...type.body, color: colors.inkSoft, marginTop: space.md, marginBottom: space.xxl },
+  button: { marginTop: space.sm },
+  link: { ...type.body, textAlign: 'center', marginTop: space.xl, color: colors.ink },
 });

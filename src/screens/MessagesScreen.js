@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
+import { colors, space, type } from '../theme';
+import { Headline } from '../components';
 
 export default function MessagesScreen({ navigation }) {
   const [conversations, setConversations] = useState([]);
@@ -48,21 +51,25 @@ export default function MessagesScreen({ navigation }) {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <FlatList
+        contentContainerStyle={styles.list}
+        ListHeaderComponent={<View style={styles.header}><Headline plain="Messages" /></View>}
         data={conversations}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         ListEmptyComponent={<Text style={styles.empty}>No conversations yet.</Text>}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  row: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  rowTitle: { fontSize: 16, fontWeight: '600' },
-  rowSubtitle: { fontSize: 13, color: '#888', marginTop: 4 },
-  empty: { textAlign: 'center', marginTop: 60, color: '#888' },
+  container: { flex: 1, backgroundColor: colors.cream, paddingHorizontal: space.xl },
+  header: { paddingTop: space.lg, paddingBottom: space.xxl },
+  list: { paddingBottom: 112 },
+  row: { paddingVertical: space.lg, borderBottomWidth: 1, borderBottomColor: colors.line },
+  rowTitle: { ...type.bodyMedium, color: colors.ink },
+  rowSubtitle: { ...type.caption, color: colors.inkSoft, marginTop: space.xs },
+  empty: { ...type.body, textAlign: 'center', marginTop: 60, color: colors.inkSoft },
 });

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { supabase } from '../../lib/supabase';
+import { colors, space, type } from '../../theme';
+import { Headline, Button, FormInput } from '../../components';
 import { schoolFromEmail } from '../../constants/schools';
 
 export default function SignUpScreen({ navigation }) {
@@ -53,34 +55,29 @@ export default function SignUpScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Create your account</Text>
+      <Headline plain="Join your" italic="campus" />
       <Text style={styles.subtitle}>Tufts and Northeastern students only — sign up with your .edu email.</Text>
 
-      <TextInput
-        style={styles.input}
+      <FormInput
         placeholder="Full name"
         value={fullName}
         onChangeText={setFullName}
       />
-      <TextInput
-        style={styles.input}
+      <FormInput
         placeholder="you@tufts.edu or you@northeastern.edu"
         autoCapitalize="none"
         keyboardType="email-address"
         value={email}
         onChangeText={setEmail}
       />
-      <TextInput
-        style={styles.input}
+      <FormInput
         placeholder="Password"
         secureTextEntry
         value={password}
         onChangeText={setPassword}
       />
 
-      <TouchableOpacity style={styles.button} onPress={handleSignUp} disabled={loading}>
-        <Text style={styles.buttonText}>{loading ? 'Creating account...' : 'Sign Up'}</Text>
-      </TouchableOpacity>
+      <Button style={styles.button} label={loading ? 'Creating account...' : 'Sign up'} onPress={handleSignUp} disabled={loading} />
 
       <TouchableOpacity onPress={() => navigation.navigate('Login')}>
         <Text style={styles.link}>Already have an account? Log in</Text>
@@ -90,24 +87,8 @@ export default function SignUpScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: '#fff' },
-  title: { fontSize: 26, fontWeight: '700', marginBottom: 8 },
-  subtitle: { fontSize: 14, color: '#666', marginBottom: 24 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 12,
-    fontSize: 16,
-  },
-  button: {
-    backgroundColor: '#111',
-    borderRadius: 10,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  link: { textAlign: 'center', marginTop: 20, color: '#111' },
+  container: { flex: 1, justifyContent: 'center', padding: space.xl, backgroundColor: colors.cream },
+  subtitle: { ...type.body, color: colors.inkSoft, marginTop: space.md, marginBottom: space.xxl },
+  button: { marginTop: space.sm },
+  link: { ...type.body, textAlign: 'center', marginTop: space.xl, color: colors.ink },
 });
