@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 
 import HomeScreen from '../screens/HomeScreen';
+import SearchScreen from '../screens/SearchScreen';
 import ListingDetailScreen from '../screens/ListingDetailScreen';
 import CreateListingScreen from '../screens/CreateListingScreen';
 import MessagesScreen from '../screens/MessagesScreen';
@@ -15,8 +16,10 @@ import { categoryFor, colors, space, stackHeaderOptions } from '../theme';
 
 const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
+const SearchStack = createNativeStackNavigator();
 const MessagesStack = createNativeStackNavigator();
 
+// Same listing screen in both the Home and Search stacks.
 function listingDetailOptions({ route }) {
   const { color } = categoryFor(route.params?.category);
   return {
@@ -39,6 +42,15 @@ function HomeStackScreen() {
   );
 }
 
+function SearchStackScreen() {
+  return (
+    <SearchStack.Navigator screenOptions={stackHeaderOptions}>
+      <SearchStack.Screen name="SearchList" component={SearchScreen} options={{ headerShown: false }} />
+      <SearchStack.Screen name="ListingDetail" component={ListingDetailScreen} options={listingDetailOptions} />
+    </SearchStack.Navigator>
+  );
+}
+
 function MessagesStackScreen() {
   return (
     <MessagesStack.Navigator screenOptions={stackHeaderOptions}>
@@ -56,6 +68,7 @@ const hideBarOnListing = (title) => ({ route }) => ({
 
 const ICONS = {
   HomeTab: ['home', 'home-outline'],
+  SearchTab: ['search', 'search-outline'],
   MessagesTab: ['chatbubble', 'chatbubble-outline'],
   ProfileTab: ['person', 'person-outline'],
 };
@@ -84,8 +97,9 @@ export default function MainTabNavigator() {
       })}
     >
       <Tab.Screen name="HomeTab" component={HomeStackScreen} options={hideBarOnListing('Browse')} />
-      <Tab.Screen name="MessagesTab" component={MessagesStackScreen} options={{ title: 'Messages' }} />
+      <Tab.Screen name="SearchTab" component={SearchStackScreen} options={hideBarOnListing('Search')} />
       <Tab.Screen name="SellTab" component={CreateListingScreen} options={{ title: 'Sell' }} />
+      <Tab.Screen name="MessagesTab" component={MessagesStackScreen} options={{ title: 'Messages' }} />
       <Tab.Screen name="ProfileTab" component={ProfileScreen} options={{ title: 'Profile' }} />
     </Tab.Navigator>
   );
