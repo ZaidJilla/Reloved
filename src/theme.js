@@ -62,7 +62,7 @@ export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32 }
 export const radius = { pill: 999, hero: 28, card: 24, row: 20, inner: 16 };
 
 export const motion = {
-  expandMs: 450,
+  expandMs: 520,
   expandCurve: [0.2, 0.85, 0.25, 1],
   contentDelayMs: 260,
   contentFadeMs: 200,

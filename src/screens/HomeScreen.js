@@ -4,31 +4,27 @@ import {
   Text,
   FlatList,
   StyleSheet,
-  TextInput,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../lib/api';
+import useOpenListing from '../hooks/useOpenListing';
 import { colors, space, type } from '../theme';
 import { Headline, ItemCard } from '../components';
 
 export default function HomeScreen({ navigation }) {
   const [listings, setListings] = useState([]);
-  const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const { openListing, registerCard } = useOpenListing(navigation, 'home');
 
-  // useCallback keeps the same function between renders unless `search` changes,
-  // so the useEffect below only re-runs when the search text actually changes.
   const loadListings = useCallback(async () => {
     try {
-      const { data } = await api.get('/search/listings', {
-        params: { q: search.trim() || undefined },
-      });
+      const { data } = await api.get('/search/listings');
       setListings(data.results);
     } catch (e) {
-      console.warn('Search failed:', e.response?.data?.detail || e.message);
+      console.warn('Feed failed:', e.response?.data?.detail || e.message);
     }
-  }, [search]);
+  }, []);
 
   useEffect(() => {
     loadListings();
@@ -51,7 +47,8 @@ export default function HomeScreen({ navigation }) {
           category={item.category}
           imageUri={item.photo_url}
           sold={item.status === 'sold'}
-          onPress={() => navigation.navigate('ListingDetail', { listingId: item.id })}
+          innerRef={registerCard(item)}
+          onPress={() => openListing(item)}
         />
       </View>
     );
@@ -69,15 +66,6 @@ export default function HomeScreen({ navigation }) {
         ListHeaderComponent={
           <View style={styles.header}>
             <Headline plain="Pre-loved," italic="right on campus" />
-            <TextInput
-              style={styles.search}
-              placeholder="Search your campus"
-              placeholderTextColor={colors.muted}
-              value={search}
-              onChangeText={setSearch}
-              onSubmitEditing={loadListings}
-              returnKeyType="search"
-            />
           </View>
         }
         ListEmptyComponent={
@@ -90,17 +78,7 @@ export default function HomeScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.cream },
-  header: { paddingTop: space.lg, paddingBottom: space.lg, gap: space.xxl },
-  search: {
-    ...type.body,
-    color: colors.ink,
-    height: 48,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.white,
-    paddingHorizontal: space.xl,
-  },
+  header: { paddingTop: space.lg, paddingBottom: space.xxl },
   // Bottom padding keeps the last row clear of the floating nav bar.
   list: { paddingHorizontal: space.xl - space.sm / 2, paddingBottom: 112 },
   cell: { flex: 1 / 2, padding: space.sm / 2 },
