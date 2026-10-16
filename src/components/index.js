@@ -4,3 +4,4 @@ export { default as Pill } from './Pill';
 export { default as ItemCard } from './ItemCard';
 export { default as FormInput } from './FormInput';
 export { CardTransitionProvider, useCardTransition } from './CardTransition';
+export { default as SearchBar } from './SearchBar';
