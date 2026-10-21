@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from app.core.listing_options import CATEGORIES, CONDITIONS, SIZES, canonical
 
 
 class ListingSearchParams(BaseModel):
@@ -14,6 +16,22 @@ class ListingSearchParams(BaseModel):
     max_price: float | None = Field(default=None, ge=0, description="Dollars")
     limit: int = Field(default=20, ge=1, le=100)
     offset: int = Field(default=0, ge=0)
+
+    # Lenient: 'tops' becomes 'Tops', but an unknown value just matches nothing.
+    @field_validator("category")
+    @classmethod
+    def _category(cls, v):
+        return canonical(v, CATEGORIES, strict=False, field="category")
+
+    @field_validator("size")
+    @classmethod
+    def _size(cls, v):
+        return canonical(v, SIZES, strict=False, field="size")
+
+    @field_validator("condition")
+    @classmethod
+    def _condition(cls, v):
+        return canonical(v, CONDITIONS, strict=False, field="condition")
 
     @model_validator(mode="after")
     def _price_range_is_ordered(self) -> "ListingSearchParams":

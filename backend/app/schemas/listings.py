@@ -1,10 +1,31 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.core.listing_options import CATEGORIES, CONDITIONS, SIZES, canonical
 
 
-class ListingCreate(BaseModel):
+class _ListingOptionsMixin(BaseModel):
+    """Normalizes and validates category/size/condition (shared by create and edit)."""
+
+    @field_validator("category", check_fields=False)
+    @classmethod
+    def _category(cls, v):
+        return canonical(v, CATEGORIES, strict=True, field="category")
+
+    @field_validator("size", check_fields=False)
+    @classmethod
+    def _size(cls, v):
+        return canonical(v, SIZES, strict=True, field="size")
+
+    @field_validator("condition", check_fields=False)
+    @classmethod
+    def _condition(cls, v):
+        return canonical(v, CONDITIONS, strict=True, field="condition")
+
+
+class ListingCreate(_ListingOptionsMixin):
     title: str = Field(min_length=1, max_length=100)
     description: str | None = Field(default=None, max_length=2000)
     price: float = Field(ge=0, le=10000, description="Dollars")
@@ -17,7 +38,7 @@ class ListingCreate(BaseModel):
     photo_urls: list[str] = Field(default_factory=list, max_length=6)
 
 
-class ListingUpdate(BaseModel):
+class ListingUpdate(_ListingOptionsMixin):
     """Partial update: only fields that are sent get changed."""
 
     title: str | None = Field(default=None, min_length=1, max_length=100)

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from app.core.auth import UserContext, get_user_context
+from app.core.listing_options import CATEGORIES, CONDITIONS, LISTING_TYPES, SIZES
 from app.schemas.listings import (
     ListingCreate,
     ListingDetail,
@@ -74,6 +75,18 @@ def create_listing(
         raise HTTPException(status_code=502, detail="Could not create listing.") from exc
 
     return get_listing(created["id"], ctx)
+
+
+@router.get("/options")
+def listing_options() -> dict:
+    """Allowed values for the post/edit pickers, so the app never hardcodes them.
+    Static data, so no login needed. Declared before `/{listing_id}` like `/mine`."""
+    return {
+        "categories": CATEGORIES,
+        "sizes": SIZES,
+        "conditions": CONDITIONS,
+        "listing_types": LISTING_TYPES,
+    }
 
 
 @router.get("/mine", response_model=ListingSearchResponse)
