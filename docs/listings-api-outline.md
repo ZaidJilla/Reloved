@@ -11,8 +11,8 @@ Status key: DONE = implemented + tested, TODO = stubbed in `routers/listings.py`
 |---|---|---|---|
 | DONE | `POST /listings` | any signed-in user | seller + school come from the token, never the body. Price in **dollars**, up to 6 `photo_urls`. Returns the detail shape. |
 | DONE | `GET /listings/{id}` | same school only | Photos sorted by `sort_order`, plus `seller_name`. 404 for other schools. |
-| TODO | `GET /listings/mine` | owner | Profile tab. Declare **before** `/{id}`. Include sold items, newest first. |
-| TODO | `PATCH /listings/{id}` | owner | Partial update with `ListingUpdate`. 404 if not the owner (RLS filters it). |
+| DONE | `GET /listings/mine` | owner | Profile tab. Same paginated shape as search (`results`, `has_more`). Includes sold, hides removed, newest first. Declared **before** `/{id}`. |
+| DONE | `PATCH /listings/{id}` | owner | Partial update (`ListingUpdate`); price in dollars. Active listings only. 422 on an empty body or null title/price/type. 404 if not the owner. |
 | DONE | `POST /listings/{id}/sold` | owner | Sets `status = 'sold'`; idempotent. Drops out of search automatically. 404 if not yours. |
 | DONE | `DELETE /listings/{id}` | owner | **Soft delete** (`status = 'removed'`), returns 204, idempotent. Removed listings 404 on detail and never show in search. |
 | TODO | `POST /listings/{id}/photos` | owner | Registers an already-uploaded photo URL. |
@@ -43,8 +43,8 @@ Status key: DONE = implemented + tested, TODO = stubbed in `routers/listings.py`
 
 ## Suggested order (smallest useful steps)
 1. ~~`POST /listings/{id}/sold` and `DELETE`~~ (done).
-2. `GET /listings/mine`.
-3. `PATCH /listings/{id}`.
+2. ~~`GET /listings/mine`~~ (done).
+3. ~~`PATCH /listings/{id}`~~ (done).
 4. Decide question 1, then add validation of category/size/condition.
 5. Photo endpoint + the `002` migration.
 

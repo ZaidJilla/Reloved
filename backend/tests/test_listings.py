@@ -161,3 +161,46 @@ def test_detail_excludes_removed(http):
 def test_owner_actions_require_auth(http):
     assert http.post("/listings/l1/sold").status_code == 401
     assert http.delete("/listings/l1").status_code == 401
+
+
+def test_mine_is_not_shadowed_by_listing_id_route(http):
+    rows = [
+        {**LISTING_ROW, "id": f"l{i}", "listing_photos": [{"photo_url": f"{i}.jpg", "sort_order": 0}]}
+        for i in range(3)
+    ]
+    fake = _as_user({"listings": rows})
+    body = http.get("/listings/mine", params={"limit": 2}).json()
+    assert [r["id"] for r in body["results"]] == ["l0", "l1"]
+    assert body["results"][0]["photo_url"] == "0.jpg"
+    assert body["has_more"] is True
+    assert ("listings", "eq", ("seller_id", "u1")) in fake.log
+    assert ("listings", "neq", ("status", "removed")) in fake.log
+    assert ("listings", "range", (0, 2)) in fake.log
+
+
+def test_patch_updates_only_sent_fields_and_converts_price(http):
+    fake = _as_user({"profiles": [{"school_id": "northeastern"}], "listings": [LISTING_ROW]})
+    r = http.patch("/listings/l1", json={"title": " New ", "price": 12.5, "size": None})
+    assert r.status_code == 200
+    update = next(c for c in fake.log if c[1] == "update")
+    assert update[2][0] == {"title": "New", "price_cents": 1250, "size": None}
+    assert ("listings", "in_", ("status", ["active"])) in fake.log
+    assert ("listings", "eq", ("seller_id", "u1")) in fake.log
+
+
+@pytest.mark.parametrize(
+    "body",
+    [{}, {"title": None}, {"price": None}, {"title": ""}, {"price": -5}, {"listing_type": "rent"}],
+)
+def test_patch_validation(http, body):
+    _as_user({"profiles": [{"school_id": "northeastern"}], "listings": [LISTING_ROW]})
+    assert http.patch("/listings/l1", json=body).status_code == 422
+
+
+def test_patch_404_when_not_owner_or_not_active(http):
+    _as_user({"profiles": [{"school_id": "northeastern"}], "listings": []})
+    assert http.patch("/listings/l1", json={"title": "x"}).status_code == 404
+
+
+def test_patch_requires_auth(http):
+    assert http.patch("/listings/l1", json={"title": "x"}).status_code == 401

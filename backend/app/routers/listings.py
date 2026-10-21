@@ -1,7 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from app.core.auth import UserContext, get_user_context
-from app.schemas.listings import ListingCreate, ListingDetail, ListingPhoto
+from app.schemas.listings import (
+    ListingCreate,
+    ListingDetail,
+    ListingPhoto,
+    ListingUpdate,
+)
+from app.schemas.search import ListingResult, ListingSearchResponse
 
 router = APIRouter(prefix="/listings", tags=["listings"])
 
@@ -70,6 +76,46 @@ def create_listing(
     return get_listing(created["id"], ctx)
 
 
+@router.get("/mine", response_model=ListingSearchResponse)
+def my_listings(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    ctx: UserContext = Depends(get_user_context),
+) -> ListingSearchResponse:
+    """The caller's own listings, newest first, for the Profile tab. Includes
+    sold items (check `status`); removed ones are hidden.
+
+    Declared before `/{listing_id}` on purpose: FastAPI matches routes in order,
+    so otherwise "mine" would be treated as a listing id."""
+    try:
+        # Ask for one extra row so we can report has_more without a count query.
+        rows = (
+            ctx.client.table("listings")
+            .select("*, listing_photos(photo_url, sort_order)")
+            .eq("seller_id", ctx.user_id)
+            .neq("status", "removed")
+            .order("created_at", desc=True)
+            .range(offset, offset + limit)
+            .execute()
+            .data
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Could not load listings.") from exc
+
+    def first_photo(row: dict) -> str | None:
+        photos = sorted(row.get("listing_photos") or [], key=lambda p: p.get("sort_order", 0))
+        return photos[0]["photo_url"] if photos else None
+
+    return ListingSearchResponse(
+        results=[
+            ListingResult(**{**row, "photo_url": first_photo(row)}) for row in rows[:limit]
+        ],
+        limit=limit,
+        offset=offset,
+        has_more=len(rows) > limit,
+    )
+
+
 @router.get("/{listing_id}", response_model=ListingDetail)
 def get_listing(
     listing_id: str, ctx: UserContext = Depends(get_user_context)
@@ -117,6 +163,35 @@ def _update_owned(
         raise HTTPException(status_code=404, detail="Listing not found.")
 
 
+@router.patch("/{listing_id}", response_model=ListingDetail)
+def update_listing(
+    listing_id: str,
+    payload: ListingUpdate,
+    ctx: UserContext = Depends(get_user_context),
+) -> ListingDetail:
+    """Owner edits their listing. Only the fields you send are changed. Only
+    active listings can be edited (sold and removed ones are frozen)."""
+    fields = payload.model_dump(exclude_unset=True)
+    if not fields:
+        raise HTTPException(status_code=422, detail="No fields to update.")
+    # Required columns can't be cleared. Optional ones (description, category,
+    # size, condition) can be set to null to blank them out.
+    for required in ("title", "price", "listing_type"):
+        if required in fields and fields[required] is None:
+            raise HTTPException(status_code=422, detail=f"{required} cannot be null.")
+
+    values = {k: v for k, v in fields.items() if k != "price"}
+    if "price" in fields:
+        values["price_cents"] = round(fields["price"] * 100)
+    if "title" in values:
+        values["title"] = values["title"].strip()
+    if values.get("description") is not None:
+        values["description"] = values["description"].strip() or None
+
+    _update_owned(ctx, listing_id, values, ["active"])
+    return get_listing(listing_id, ctx)
+
+
 @router.post("/{listing_id}/sold", response_model=ListingDetail)
 def mark_sold(
     listing_id: str, ctx: UserContext = Depends(get_user_context)
@@ -138,7 +213,4 @@ def delete_listing(
 
 
 # TODO (see docs/listings-api-outline.md):
-#   GET    /listings/mine            -> caller's own listings (Profile tab)
-#   PATCH  /listings/{id}            -> owner edits fields (ListingUpdate)
 #   POST   /listings/{id}/photos     -> owner adds an uploaded photo URL
-# Declare /mine BEFORE /{listing_id} or "mine" gets treated as an id.
