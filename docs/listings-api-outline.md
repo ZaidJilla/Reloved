@@ -51,7 +51,7 @@ Status key: DONE = implemented + tested, TODO = stubbed in `routers/listings.py`
 2. ~~`GET /listings/mine`~~ (done).
 3. ~~`PATCH /listings/{id}`~~ (done).
 4. ~~Allowed values for category/size/condition~~ (done; see question 1).
-5. Photo endpoint + the `002` migration.
+5. Photo endpoint + the `004` migration.
 
 ## Frontend (Priyanka) once it lands
 - `CreateListingScreen` currently inserts into Supabase directly with free-text
