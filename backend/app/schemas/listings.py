@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.core.listing_options import CATEGORIES, CONDITIONS, SIZES, canonical
+from app.core.listing_options import CATEGORIES, CONDITIONS, MAX_PHOTOS, SIZES, canonical
 
 
 class _ListingOptionsMixin(BaseModel):
@@ -35,7 +35,7 @@ class ListingCreate(_ListingOptionsMixin):
     listing_type: Literal["resale", "handmade"] = "resale"
     # Photos are uploaded to Supabase Storage by the app first; these are the
     # resulting public URLs, in display order.
-    photo_urls: list[str] = Field(default_factory=list, max_length=6)
+    photo_urls: list[str] = Field(default_factory=list, max_length=MAX_PHOTOS)
 
 
 class ListingUpdate(_ListingOptionsMixin):
@@ -51,8 +51,13 @@ class ListingUpdate(_ListingOptionsMixin):
 
 
 class ListingPhoto(BaseModel):
+    id: str | None = None
     photo_url: str
     sort_order: int = 0
+
+
+class PhotoCreate(BaseModel):
+    photo_url: str = Field(max_length=2000)
 
 
 class ListingDetail(BaseModel):

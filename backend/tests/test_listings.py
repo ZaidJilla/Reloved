@@ -32,6 +32,9 @@ LISTING_ROW = {
 }
 
 
+PHOTO_BASE = "http://localhost/storage/v1/object/public/listing-photos/"
+
+
 class FakeQuery:
     """Chainable stand-in for supabase's query builder; records the calls."""
 
@@ -92,7 +95,7 @@ def test_create_uses_caller_identity_and_converts_price(http):
             "title": " Flannel ",
             "price": 20.5,
             "seller_id": "someone-else",
-            "photo_urls": ["a.jpg"],
+            "photo_urls": [PHOTO_BASE + "a.jpg"],
         },
     )
     assert r.status_code == 201

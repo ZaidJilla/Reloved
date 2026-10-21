@@ -17,6 +17,12 @@ CONDITIONS = ("New", "Like new", "Good", "Fair")
 
 LISTING_TYPES = ("resale", "handmade")
 
+# Most photos one listing can have (create and add-photo both enforce this).
+MAX_PHOTOS = 6
+
+# Public bucket the app uploads listing photos to (see README, Supabase setup).
+PHOTO_BUCKET = "listing-photos"
+
 # Common alternate spellings, matched case-insensitively.
 _ALIASES = {"os": "One Size", "onesize": "One Size", "one-size": "One Size"}
 

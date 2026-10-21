@@ -16,7 +16,9 @@ Status key: DONE = implemented + tested, TODO = stubbed in `routers/listings.py`
 | DONE | `PATCH /listings/{id}` | owner | Partial update (`ListingUpdate`); price in dollars. Active listings only. 422 on an empty body or null title/price/type. 404 if not the owner. |
 | DONE | `POST /listings/{id}/sold` | owner | Sets `status = 'sold'`; idempotent. Drops out of search automatically. 404 if not yours. |
 | DONE | `DELETE /listings/{id}` | owner | **Soft delete** (`status = 'removed'`), returns 204, idempotent. Removed listings 404 on detail and never show in search. |
-| TODO | `POST /listings/{id}/photos` | owner | Registers an already-uploaded photo URL. |
+| DONE | `POST /listings/{id}/photos` | owner | Attaches an already-uploaded photo URL at the end. URL must be in our `listing-photos` bucket (422 otherwise); max 6 per listing (409). Active listings only. Returns the listing. |
+| DONE | `DELETE /listings/{id}/photos/{photo_id}` | owner | Removes one photo (204). Needs migration `004`. Photo ids come back in the detail response (`photos[].id`). |
+| TODO | `PUT /listings/{id}/photos/order` | owner | Reorder photos. `004` already allows updates. |
 
 ## Design decisions already made
 - **Photos upload straight from the app to Supabase Storage** (`listing-photos`
@@ -41,19 +43,23 @@ Status key: DONE = implemented + tested, TODO = stubbed in `routers/listings.py`
    so buyers keep their conversations. Revisit if we need real data deletion.
 3. ~~Mark sold: separate endpoint or `PATCH status`?~~ **Decided: separate
    endpoint** (`POST /{id}/sold`); lets us hook notifications/ratings later.
-4. **Photo cleanup.** Deleting a listing doesn't delete its Storage files.
-   Fine for now; later a cleanup job.
-5. **`listing_photos` has no update/delete RLS policy**, so removing or
-   reordering photos needs a migration (`004_listing_photos_policies.sql`).
+4. **Photo cleanup.** Neither deleting a listing nor deleting a photo removes the
+   file from Storage. Fine for now; later a cleanup job (or a storage policy so
+   the API can remove it).
+5. ~~`listing_photos` had no update/delete RLS policy.~~ Added in
+   `004_listing_photos_policies.sql` (run it before using photo delete).
 
 ## Suggested order (smallest useful steps)
 1. ~~`POST /listings/{id}/sold` and `DELETE`~~ (done).
 2. ~~`GET /listings/mine`~~ (done).
 3. ~~`PATCH /listings/{id}`~~ (done).
 4. ~~Allowed values for category/size/condition~~ (done; see question 1).
-5. Photo endpoint + the `004` migration.
+5. ~~Photo add/delete + the `004` migration~~ (done). Reorder is still TODO.
 
 ## Frontend (Priyanka) once it lands
+- Photos: upload the file to the `listing-photos` bucket from the app, then send
+  the public URL (`supabase.storage.from('listing-photos').getPublicUrl(...)`) in
+  `photo_urls` when posting, or to `POST /listings/{id}/photos` later.
 - `CreateListingScreen` currently inserts into Supabase directly with free-text
   category/size/condition. Switch it to: fetch `GET /listings/options` once and
   render pickers (chips or a dropdown) from it, upload the photo to Storage,

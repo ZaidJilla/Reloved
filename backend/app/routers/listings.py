@@ -1,18 +1,27 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from app.core.auth import UserContext, get_user_context
-from app.core.listing_options import CATEGORIES, CONDITIONS, LISTING_TYPES, SIZES
+from app.core.config import get_settings
+from app.core.listing_options import (
+    CATEGORIES,
+    CONDITIONS,
+    LISTING_TYPES,
+    MAX_PHOTOS,
+    PHOTO_BUCKET,
+    SIZES,
+)
 from app.schemas.listings import (
     ListingCreate,
     ListingDetail,
     ListingPhoto,
     ListingUpdate,
+    PhotoCreate,
 )
 from app.schemas.search import ListingResult, ListingSearchResponse
 
 router = APIRouter(prefix="/listings", tags=["listings"])
 
-DETAIL_SELECT = "*, listing_photos(photo_url, sort_order), profiles!seller_id(full_name)"
+DETAIL_SELECT = "*, listing_photos(id, photo_url, sort_order), profiles!seller_id(full_name)"
 
 
 def _my_school_id(ctx: UserContext) -> str:
@@ -38,12 +47,25 @@ def _to_detail(row: dict) -> ListingDetail:
     )
 
 
+def _check_photo_urls(urls: list[str]) -> None:
+    """Only accept photos that were uploaded to OUR public Storage bucket, so a
+    listing can't point at an arbitrary (tracking, hotlinked or malicious) URL."""
+    prefix = f"{get_settings().supabase_url.rstrip('/')}/storage/v1/object/public/{PHOTO_BUCKET}/"
+    for url in urls:
+        if not url.startswith(prefix) or ".." in url or any(c.isspace() for c in url):
+            raise HTTPException(
+                status_code=422,
+                detail=f"Photo URLs must point to the '{PHOTO_BUCKET}' storage bucket.",
+            )
+
+
 @router.post("", response_model=ListingDetail, status_code=201)
 def create_listing(
     payload: ListingCreate, ctx: UserContext = Depends(get_user_context)
 ) -> ListingDetail:
     """Create a listing at the caller's school. Seller and school come from the
     caller's identity, never from the request body."""
+    _check_photo_urls(payload.photo_urls)
     school_id = _my_school_id(ctx)
     try:
         created = (
@@ -225,5 +247,75 @@ def delete_listing(
     return Response(status_code=204)
 
 
-# TODO (see docs/listings-api-outline.md):
-#   POST   /listings/{id}/photos     -> owner adds an uploaded photo URL
+def _require_editable(ctx: UserContext, listing_id: str) -> None:
+    """404 unless the caller owns this listing and it's still active."""
+    try:
+        rows = (
+            ctx.client.table("listings")
+            .select("id")
+            .eq("id", listing_id)
+            .eq("seller_id", ctx.user_id)
+            .eq("status", "active")
+            .execute()
+            .data
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Could not load listing.") from exc
+    if not rows:
+        raise HTTPException(status_code=404, detail="Listing not found.")
+
+
+@router.post("/{listing_id}/photos", response_model=ListingDetail, status_code=201)
+def add_photo(
+    listing_id: str,
+    payload: PhotoCreate,
+    ctx: UserContext = Depends(get_user_context),
+) -> ListingDetail:
+    """Owner attaches a photo the app already uploaded to Storage. It goes at
+    the end of the listing's photos. FastAPI never touches the image bytes."""
+    _check_photo_urls([payload.photo_url])
+    _require_editable(ctx, listing_id)
+    try:
+        existing = (
+            ctx.client.table("listing_photos")
+            .select("id, sort_order")
+            .eq("listing_id", listing_id)
+            .execute()
+            .data
+        )
+        if len(existing) >= MAX_PHOTOS:
+            raise HTTPException(
+                status_code=409, detail=f"A listing can have at most {MAX_PHOTOS} photos."
+            )
+        next_order = max((p["sort_order"] for p in existing), default=-1) + 1
+        ctx.client.table("listing_photos").insert(
+            {"listing_id": listing_id, "photo_url": payload.photo_url, "sort_order": next_order}
+        ).execute()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Could not add photo.") from exc
+    return get_listing(listing_id, ctx)
+
+
+@router.delete("/{listing_id}/photos/{photo_id}", status_code=204)
+def delete_photo(
+    listing_id: str, photo_id: str, ctx: UserContext = Depends(get_user_context)
+) -> Response:
+    """Owner removes one photo. Needs migration 004 (no delete policy exists on
+    listing_photos before it). The file stays in Storage for now."""
+    _require_editable(ctx, listing_id)
+    try:
+        rows = (
+            ctx.client.table("listing_photos")
+            .delete()
+            .eq("id", photo_id)
+            .eq("listing_id", listing_id)
+            .execute()
+            .data
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Could not delete photo.") from exc
+    if not rows:
+        raise HTTPException(status_code=404, detail="Photo not found.")
+    return Response(status_code=204)
