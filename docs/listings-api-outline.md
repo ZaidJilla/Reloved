@@ -13,8 +13,8 @@ Status key: DONE = implemented + tested, TODO = stubbed in `routers/listings.py`
 | DONE | `GET /listings/{id}` | same school only | Photos sorted by `sort_order`, plus `seller_name`. 404 for other schools. |
 | TODO | `GET /listings/mine` | owner | Profile tab. Declare **before** `/{id}`. Include sold items, newest first. |
 | TODO | `PATCH /listings/{id}` | owner | Partial update with `ListingUpdate`. 404 if not the owner (RLS filters it). |
-| TODO | `POST /listings/{id}/sold` | owner | Sets `status = 'sold'`. Drops out of search automatically. |
-| TODO | `DELETE /listings/{id}` | owner | Cascades to photos, conversations and messages. Maybe prefer soft delete (`status = 'removed'`). |
+| DONE | `POST /listings/{id}/sold` | owner | Sets `status = 'sold'`; idempotent. Drops out of search automatically. 404 if not yours. |
+| DONE | `DELETE /listings/{id}` | owner | **Soft delete** (`status = 'removed'`), returns 204, idempotent. Removed listings 404 on detail and never show in search. |
 | TODO | `POST /listings/{id}/photos` | owner | Registers an already-uploaded photo URL. |
 
 ## Design decisions already made
@@ -32,19 +32,17 @@ Status key: DONE = implemented + tested, TODO = stubbed in `routers/listings.py`
    text, and search filters are case-sensitive exact matches (`Tops` != `tops`).
    Options: a fixed list validated server-side (and a `GET /listings/options`
    for the app's pickers), or lowercase everything on write. Recommend the list.
-2. **Delete vs soft delete.** Hard delete wipes conversations a buyer may still
-   want. Recommend soft delete via `status = 'removed'` (the schema already
-   allows it).
-3. **Mark sold: separate endpoint or just `PATCH status`?** A separate endpoint
-   is clearer and lets us hook notifications/ratings later.
+2. ~~Delete vs soft delete.~~ **Decided: soft delete** via `status = 'removed'`,
+   so buyers keep their conversations. Revisit if we need real data deletion.
+3. ~~Mark sold: separate endpoint or `PATCH status`?~~ **Decided: separate
+   endpoint** (`POST /{id}/sold`); lets us hook notifications/ratings later.
 4. **Photo cleanup.** Deleting a listing doesn't delete its Storage files.
    Fine for now; later a cleanup job.
 5. **`listing_photos` has no update/delete RLS policy**, so removing or
    reordering photos needs a migration (`002_listing_photos_policies.sql`).
 
 ## Suggested order (smallest useful steps)
-1. `POST /listings/{id}/sold` and `DELETE` (owner actions, ~10 lines each; match
-   on `seller_id = ctx.user_id` and treat zero rows as 404).
+1. ~~`POST /listings/{id}/sold` and `DELETE`~~ (done).
 2. `GET /listings/mine`.
 3. `PATCH /listings/{id}`.
 4. Decide question 1, then add validation of category/size/condition.

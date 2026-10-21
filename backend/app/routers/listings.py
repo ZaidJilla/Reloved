@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 
 from app.core.auth import UserContext, get_user_context
 from app.schemas.listings import ListingCreate, ListingDetail, ListingPhoto
@@ -75,13 +75,14 @@ def get_listing(
     listing_id: str, ctx: UserContext = Depends(get_user_context)
 ) -> ListingDetail:
     """One listing with photos and seller name. 404 if it's at another school
-    (RLS alone doesn't scope reads by campus)."""
+    (RLS alone doesn't scope reads by campus) or has been removed."""
     try:
         rows = (
             ctx.client.table("listings")
             .select(DETAIL_SELECT)
             .eq("id", listing_id)
             .eq("school_id", _my_school_id(ctx))
+            .neq("status", "removed")
             .execute()
             .data
         )
@@ -94,10 +95,50 @@ def get_listing(
     return _to_detail(rows[0])
 
 
+def _update_owned(
+    ctx: UserContext, listing_id: str, values: dict, from_statuses: list[str]
+) -> None:
+    """Update a listing only if the caller owns it and it's in one of
+    `from_statuses`. Not found, someone else's, and wrong state all give the
+    same 404, so the response doesn't reveal whether a listing exists."""
+    try:
+        rows = (
+            ctx.client.table("listings")
+            .update(values)
+            .eq("id", listing_id)
+            .eq("seller_id", ctx.user_id)
+            .in_("status", from_statuses)
+            .execute()
+            .data
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Could not update listing.") from exc
+    if not rows:
+        raise HTTPException(status_code=404, detail="Listing not found.")
+
+
+@router.post("/{listing_id}/sold", response_model=ListingDetail)
+def mark_sold(
+    listing_id: str, ctx: UserContext = Depends(get_user_context)
+) -> ListingDetail:
+    """Owner marks a listing as sold. Safe to call twice. Sold listings drop out
+    of search automatically (it only returns status = 'active')."""
+    _update_owned(ctx, listing_id, {"status": "sold"}, ["active", "sold"])
+    return get_listing(listing_id, ctx)
+
+
+@router.delete("/{listing_id}", status_code=204)
+def delete_listing(
+    listing_id: str, ctx: UserContext = Depends(get_user_context)
+) -> Response:
+    """Owner removes a listing. This is a soft delete (status = 'removed'), so
+    buyers keep their conversations and nothing cascades away. Safe to call twice."""
+    _update_owned(ctx, listing_id, {"status": "removed"}, ["active", "sold", "removed"])
+    return Response(status_code=204)
+
+
 # TODO (see docs/listings-api-outline.md):
 #   GET    /listings/mine            -> caller's own listings (Profile tab)
 #   PATCH  /listings/{id}            -> owner edits fields (ListingUpdate)
-#   POST   /listings/{id}/sold       -> owner marks sold
-#   DELETE /listings/{id}            -> owner deletes
 #   POST   /listings/{id}/photos     -> owner adds an uploaded photo URL
 # Declare /mine BEFORE /{listing_id} or "mine" gets treated as an id.

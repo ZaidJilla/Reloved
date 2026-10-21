@@ -122,3 +122,42 @@ def test_create_validation(http, body):
 def test_requires_auth(http):
     assert http.get("/listings/l1").status_code == 401
     assert http.post("/listings", json={"title": "x", "price": 1}).status_code == 401
+
+
+def test_mark_sold_updates_only_owned_listing(http):
+    sold_row = {**LISTING_ROW, "status": "sold"}
+    fake = _as_user({"profiles": [{"school_id": "northeastern"}], "listings": [sold_row]})
+    r = http.post("/listings/l1/sold")
+    assert r.status_code == 200
+    assert r.json()["status"] == "sold"
+    assert ("listings", "update", ({"status": "sold"},)) in fake.log
+    assert ("listings", "eq", ("seller_id", "u1")) in fake.log
+
+
+def test_mark_sold_404_when_not_owner_or_missing(http):
+    _as_user({"profiles": [{"school_id": "northeastern"}], "listings": []})
+    assert http.post("/listings/l1/sold").status_code == 404
+
+
+def test_delete_is_a_soft_delete(http):
+    fake = _as_user({"profiles": [{"school_id": "northeastern"}], "listings": [LISTING_ROW]})
+    r = http.delete("/listings/l1")
+    assert r.status_code == 204
+    assert ("listings", "update", ({"status": "removed"},)) in fake.log
+    assert not any(op == "delete" for _, op, _ in fake.log)
+
+
+def test_delete_404_when_not_owner(http):
+    _as_user({"profiles": [{"school_id": "northeastern"}], "listings": []})
+    assert http.delete("/listings/l1").status_code == 404
+
+
+def test_detail_excludes_removed(http):
+    fake = _as_user({"profiles": [{"school_id": "northeastern"}], "listings": []})
+    assert http.get("/listings/l1").status_code == 404
+    assert ("listings", "neq", ("status", "removed")) in fake.log
+
+
+def test_owner_actions_require_auth(http):
+    assert http.post("/listings/l1/sold").status_code == 401
+    assert http.delete("/listings/l1").status_code == 401
